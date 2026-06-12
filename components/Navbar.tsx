@@ -8,8 +8,7 @@ import {
   Briefcase, 
   FolderGit2, 
   Award, 
-  Terminal, 
-  Code2 
+  Terminal
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -61,7 +60,7 @@ export default function Navbar() {
         {/* Top Logo */}
         <a href="#home" className="relative group flex items-center justify-center">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-fireOrange-500 to-deepRed-600 flex items-center justify-center border border-white/10 shadow-[0_0_15px_rgba(239,68,68,0.25)] group-hover:scale-105 transition-all duration-300">
-            <Code2 className="w-5 h-5 text-white" />
+            <img src="/icon.png" alt="Harish K Logo" className="w-6 h-6 object-contain" />
           </div>
           <span className="absolute left-16 px-3 py-1.5 bg-black/90 backdrop-blur-md border border-white/10 rounded-lg text-white font-mono text-[9px] uppercase tracking-wider opacity-0 -translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 shadow-xl whitespace-nowrap z-50">
             Harish K - Dev System

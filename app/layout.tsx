@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   keywords: ["Harish K", "Full Stack Developer", "Developer Portfolio", "Go Developer", "React Developer", "Spring Boot", "Software Engineer Intern", "Dindigul", "India"],
   authors: [{ name: "Harish K" }],
   viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Background circle/rounded rect for premium contrast -->
+  <rect width="512" height="512" rx="128" fill="#121214" />
+  
+  <!-- Gradient definitions -->
+  <defs>
+    <linearGradient id="banana-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF59D" />
+      <stop offset="40%" stop-color="#FBC02D" />
+      <stop offset="100%" stop-color="#F57F17" />
+    </linearGradient>
+    <linearGradient id="stem-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8D6E63" />
+      <stop offset="100%" stop-color="#3E2723" />
+    </linearGradient>
+  </defs>
+
+  <!-- Group for the banana icon -->
+  <g transform="translate(40, 20)">
+    <!-- Banana Body -->
+    <path d="M 380,110 
+             C 320,70 240,90 170,150 
+             C 90,220 50,320 80,390 
+             C 100,430 140,430 160,390 
+             C 180,350 220,270 290,210 
+             C 340,170 380,140 380,110 Z" 
+          fill="url(#banana-gradient)" />
+          
+    <!-- Stem (top) -->
+    <path d="M 380,110 C 395,95 410,75 405,65 C 395,55 375,70 360,85 Z" fill="url(#stem-gradient)" />
+    
+    <!-- Tip (bottom) -->
+    <path d="M 80,390 C 75,400 65,415 70,425 C 75,430 85,425 90,415 Z" fill="url(#stem-gradient)" />
+
+    <!-- Sleek highlight line along the curve -->
+    <path d="M 340,140 C 270,195 200,285 150,360" fill="none" stroke="#FFF" stroke-width="8" stroke-linecap="round" opacity="0.3" />
+  </g>
+</svg>

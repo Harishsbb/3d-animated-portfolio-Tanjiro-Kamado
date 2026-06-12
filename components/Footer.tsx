@@ -1,6 +1,6 @@
 "use client";
 
-import { Code2, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -15,7 +15,7 @@ export default function Footer() {
         <div className="flex flex-col items-center md:items-start gap-2">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded bg-gradient-to-br from-fireOrange-500 to-deepRed-600 flex items-center justify-center">
-              <Code2 className="w-4 h-4 text-white" />
+              <img src="/icon.png" alt="Harish K Logo" className="w-4 h-4 object-contain" />
             </div>
             <span className="font-display font-black tracking-widest text-sm text-white">
               HARISH K
