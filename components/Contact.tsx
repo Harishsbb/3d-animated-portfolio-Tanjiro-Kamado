@@ -13,10 +13,10 @@ export default function Contact() {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<CommandOutput[]>([]);
   const consoleBodyRef = useRef<HTMLDivElement>(null);
-  
+
   const emailAddress = "bavaharishkumar@gmail.com";
-  const githubUrl = "https://github.com"; // User can replace with actual
-  const linkedinUrl = "https://linkedin.com"; // User can replace with actual
+  const githubUrl = "https://github.com/Harishsbb"; // User can replace with actual
+  const linkedinUrl = "https://www.linkedin.com/in/harishk06944/"; // User can replace with actual
 
   // Initial terminal simulation
   useEffect(() => {
@@ -125,7 +125,7 @@ export default function Contact() {
       <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-fireOrange-900/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto px-6 relative z-10">
-        
+
         {/* Section Heading */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-4">
           <div>
@@ -155,12 +155,12 @@ export default function Contact() {
               <span className="w-3.5 h-3.5 rounded-full bg-[#fbbf24] block border border-[#d97706]/40" />
               <span className="w-3.5 h-3.5 rounded-full bg-[#10b981] block border border-[#059669]/40" />
             </div>
-            
+
             <span className="font-mono text-xs text-white/50 flex items-center gap-1.5 select-none">
               <Terminal className="w-3.5 h-3.5 text-fireOrange-500" />
               harish-k-shell v1.0.0
             </span>
-            
+
             {/* Spacer to align title centered */}
             <div className="w-14" />
           </div>
@@ -170,15 +170,14 @@ export default function Contact() {
             {history.map((line, idx) => (
               <div
                 key={idx}
-                className={`whitespace-pre-wrap ${
-                  line.type === "input"
-                    ? "text-white font-bold"
-                    : line.type === "success"
+                className={`whitespace-pre-wrap ${line.type === "input"
+                  ? "text-white font-bold"
+                  : line.type === "success"
                     ? "text-gold-400"
                     : line.type === "error"
-                    ? "text-red-500"
-                    : "text-white/70"
-                }`}
+                      ? "text-red-500"
+                      : "text-white/70"
+                  }`}
               >
                 {line.text}
               </div>
@@ -190,7 +189,7 @@ export default function Contact() {
             <span className="font-mono text-xs md:text-sm text-fireOrange-500 font-bold mr-2 shrink-0 select-none">
               guest@harish-dev:~#
             </span>
-            
+
             <input
               type="text"
               value={input}
