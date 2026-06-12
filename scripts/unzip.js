@@ -10,8 +10,9 @@ function main() {
   console.log('=== Automated Frame Extraction ===');
   
   if (!fs.existsSync(zipPath)) {
-    console.error(`Error: tanjiro_frames1.zip not found in workspace root: ${zipPath}`);
-    process.exit(1);
+    console.log(`Warning: tanjiro_frames1.zip not found at ${zipPath}.`);
+    console.log('Skipping extraction as frames may already be committed or generated.');
+    process.exit(0);
   }
 
   // Create public directory
