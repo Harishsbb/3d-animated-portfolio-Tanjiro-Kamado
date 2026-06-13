@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Download, Sparkles } from "lucide-react";
 import { TOTAL_FRAMES } from "./framesConfig";
@@ -31,12 +31,15 @@ export default function CinematicHero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
+  const [inViewport, setInViewport] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   
   // Image cache and scrubbing references
-  const imagesRef = useRef<HTMLImageElement[]>([]);
+  const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(TOTAL_FRAMES).fill(null));
+  const loadStatusRef = useRef<("idle" | "loading" | "loaded" | "failed")[]>(new Array(TOTAL_FRAMES).fill("idle"));
   const currentFrameRef = useRef<number>(1);
   const targetFrameRef = useRef<number>(1);
   const lastValidImageRef = useRef<HTMLImageElement | null>(null);
@@ -46,48 +49,190 @@ export default function CinematicHero() {
   const codeSymbolsRef = useRef<CodeSymbol[]>([]);
   const symbolsPool = ["<dev />", "func", "defer", "go", "struct", "{}", "[]", "=>", "const", "React", "Spring", "API", "DB"];
 
-  // 1. Preload image sequence
+  const inViewportRef = useRef(false);
+
+  // Monitor tab visibility state to pause rendering/event handlers when inactive
   useEffect(() => {
-    const totalFrames = TOTAL_FRAMES;
-    let loadedCount = 0;
-    const preloadedImages: HTMLImageElement[] = [];
-
-    // Fallback if some frames fail to load
-    const handleLoadComplete = () => {
-      setLoading(false);
+    const handleVisibilityChange = () => {
+      setTabVisible(document.visibilityState === "visible");
     };
-
-    for (let i = 1; i <= totalFrames; i++) {
-      const img = new Image();
-      const frameNum = String(i).padStart(3, "0");
-      img.src = `/frames/frame_${frameNum}.jpg`;
-
-      img.onload = () => {
-        loadedCount++;
-        const pct = Math.round((loadedCount / totalFrames) * 100);
-        setLoadProgress(pct);
-        if (loadedCount === totalFrames) {
-          handleLoadComplete();
-        }
-      };
-
-      img.onerror = () => {
-        // Log error and count as loaded to prevent complete blocking in environments without ZIP extraction
-        loadedCount++;
-        setLoadProgress(Math.round((loadedCount / totalFrames) * 100));
-        if (loadedCount === totalFrames) {
-          handleLoadComplete();
-        }
-      };
-
-      preloadedImages.push(img);
-    }
-
-    imagesRef.current = preloadedImages;
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
-  // 2. Scroll event handling
+  // IntersectionObserver to lazy load the section and pause/resume resource-heavy animations
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Observe the fixed canvas itself since it remains fixed in the viewport while scrolling the page
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInViewport(entry.isIntersecting);
+        inViewportRef.current = entry.isIntersecting;
+      },
+      {
+        root: null, // relative to document viewport
+        threshold: 0
+      }
+    );
+
+    observer.observe(canvas);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const updateProgress = useCallback(() => {
+    const processed = loadStatusRef.current.filter(
+      (status) => status === "loaded" || status === "failed"
+    ).length;
+    const pct = Math.round((processed / TOTAL_FRAMES) * 100);
+    setLoadProgress(pct);
+    if (processed === TOTAL_FRAMES) {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load a single frame by index (1-based index)
+  const loadFrame = useCallback((index: number, onComplete?: () => void) => {
+    if (index < 1 || index > TOTAL_FRAMES) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const idx = index - 1;
+    if (loadStatusRef.current[idx] !== "idle") {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    loadStatusRef.current[idx] = "loading";
+    const img = new Image();
+    const frameNum = String(index).padStart(3, "0");
+    img.src = `/frames/frame_${frameNum}.jpg`;
+    imagesRef.current[idx] = img;
+
+    let isSettled = false;
+
+    // 10-second timeout safety net to prevent connection pool locking
+    const timeoutId = setTimeout(() => {
+      if (!isSettled) {
+        isSettled = true;
+        loadStatusRef.current[idx] = "failed";
+        updateProgress();
+        if (onComplete) onComplete();
+      }
+    }, 10000);
+
+    img.onload = () => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+
+      // Decode image off the main thread for buttery-smooth scrolling performance
+      if ("decode" in img) {
+        img.decode()
+          .then(() => {
+            loadStatusRef.current[idx] = "loaded";
+            updateProgress();
+            if (onComplete) onComplete();
+          })
+          .catch(() => {
+            // Fallback: mark as loaded if decoding fails so the canvas can still try to draw it
+            loadStatusRef.current[idx] = "loaded";
+            updateProgress();
+            if (onComplete) onComplete();
+          });
+      } else {
+        loadStatusRef.current[idx] = "loaded";
+        updateProgress();
+        if (onComplete) onComplete();
+      }
+    };
+
+    img.onerror = () => {
+      if (isSettled) return;
+      isSettled = true;
+      clearTimeout(timeoutId);
+      loadStatusRef.current[idx] = "failed";
+      updateProgress();
+      if (onComplete) onComplete();
+    };
+  }, [updateProgress]);
+
+  // Smooth progressive preloading when in viewport
+  useEffect(() => {
+    if (!inViewport || !tabVisible) return;
+
+    // A. Immediately load the frame corresponding to the current scroll position so the user gets visuals instantly
+    const initialTarget = targetFrameRef.current;
+    loadFrame(initialTarget);
+
+    // B. Load a buffer of adjacent frames to ensure smooth initial scrolling
+    for (let i = 1; i <= 5; i++) {
+      loadFrame(initialTarget + i);
+      loadFrame(initialTarget - i);
+    }
+
+    // C. Progressive background queue loading remaining frames
+    let activeConnections = 0;
+    const MAX_CONCURRENT = 3; // Keep concurrency small to prevent network congestion during initial page load
+    let nextIndex = 1;
+    let isCancelled = false;
+
+    const fillQueue = () => {
+      if (isCancelled || !inViewportRef.current) return;
+
+      // Find the next frame that hasn't been loaded or isn't currently loading
+      while (nextIndex <= TOTAL_FRAMES && loadStatusRef.current[nextIndex - 1] !== "idle") {
+        nextIndex++;
+      }
+
+      if (nextIndex > TOTAL_FRAMES) {
+        return; // All frames processed
+      }
+
+      if (activeConnections < MAX_CONCURRENT) {
+        const frameToLoad = nextIndex;
+        nextIndex++;
+        activeConnections++;
+
+        loadFrame(frameToLoad, () => {
+          activeConnections--;
+          // Use requestIdleCallback or setTimeout to yield CPU back to main thread
+          if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+            window.requestIdleCallback(() => fillQueue());
+          } else {
+            setTimeout(fillQueue, 15);
+          }
+        });
+
+        // Trigger next connection slot immediately if available
+        if (activeConnections < MAX_CONCURRENT) {
+          fillQueue();
+        }
+      }
+    };
+
+    // Stagger start of background queue so it does not compete with initial paint rendering
+    const delayTimeout = setTimeout(() => {
+      fillQueue();
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(delayTimeout);
+    };
+  }, [inViewport, tabVisible, loadFrame]);
+
+  // 2. Scroll event handling (only active when section is in viewport)
+  useEffect(() => {
+    if (!inViewport || !tabVisible) return;
+
     const handleScroll = () => {
       if (!containerRef.current) return;
       
@@ -107,22 +252,33 @@ export default function CinematicHero() {
         const globalProgress = Math.max(0, Math.min(1, window.scrollY / globalScrollHeight));
         // Map global scroll progress to frame sequence (1 to TOTAL_FRAMES)
         const targetFrame = Math.round(globalProgress * (TOTAL_FRAMES - 1)) + 1;
+        
+        const lastTargetFrame = targetFrameRef.current;
         targetFrameRef.current = targetFrame;
+
+        // Dynamic On-Demand Loading: ONLY trigger loading if the target frame index has changed!
+        if (targetFrame !== lastTargetFrame) {
+          loadFrame(targetFrame);
+          loadFrame(targetFrame + 1);
+          loadFrame(targetFrame + 2);
+          loadFrame(targetFrame - 1);
+          loadFrame(targetFrame - 2);
+        }
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    // Run once initially
+    // Run once initially to capture current position
     handleScroll();
     
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [loading]);
+  }, [inViewport, tabVisible, loadFrame]);
 
-  // 3. Canvas rendering loop: frame interpolation + particles + code symbols
+  // 3. Canvas rendering loop: frame interpolation + particles + code symbols (only active when section is in viewport)
   useEffect(() => {
-    if (loading) return;
+    if (!inViewport || !tabVisible) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -172,12 +328,14 @@ export default function CinematicHero() {
       };
     };
 
-    // Pre-populate particles
-    for (let i = 0; i < 40; i++) {
-      particlesRef.current.push({
-        ...spawnParticle(),
-        y: Math.random() * canvas.height
-      });
+    // Pre-populate particles if empty to preserve particle system state
+    if (particlesRef.current.length === 0) {
+      for (let i = 0; i < 40; i++) {
+        particlesRef.current.push({
+          ...spawnParticle(),
+          y: Math.random() * canvas.height
+        });
+      }
     }
 
     const render = () => {
@@ -193,7 +351,7 @@ export default function CinematicHero() {
       let img = imagesRef.current[frameIdx - 1];
 
       // Fallback to the last successfully loaded frame if the current target frame is not ready
-      if (!img || !img.complete || img.naturalWidth === 0) {
+      if (!img || loadStatusRef.current[frameIdx - 1] !== "loaded" || img.naturalWidth === 0) {
         if (lastValidImageRef.current) {
           img = lastValidImageRef.current;
         }
@@ -312,7 +470,7 @@ export default function CinematicHero() {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", resizeCanvas);
     };
-  }, [loading]);
+  }, [inViewport, tabVisible]);
 
   // Content scroll stage triggers
   const showStage1 = scrollProgress >= 0 && scrollProgress < 0.28;
