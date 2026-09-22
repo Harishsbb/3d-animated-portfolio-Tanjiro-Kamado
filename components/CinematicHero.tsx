@@ -113,7 +113,7 @@ export default function CinematicHero() {
     loadStatusRef.current[idx] = "loading";
     const img = new Image();
     const frameNum = String(index).padStart(3, "0");
-    img.src = `/frames/frame_${frameNum}.jpg`;
+    img.src = `/frames/frame_${frameNum}.webp`;
     imagesRef.current[idx] = img;
 
     let isSettled = false;

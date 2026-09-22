@@ -15,6 +15,12 @@ function main() {
     process.exit(0);
   }
 
+  // Check if WebP frames are already present
+  if (fs.existsSync(path.join(destPath, 'frame_001.webp'))) {
+    console.log('WebP frames already present in public/frames/. Skipping extraction.');
+    process.exit(0);
+  }
+
   // Create public directory
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
@@ -49,7 +55,7 @@ function main() {
         const stat = fs.statSync(fullPath);
         if (stat.isDirectory()) {
           results = results.concat(locateImages(fullPath));
-        } else if (file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.jpeg') || file.toLowerCase().endsWith('.png')) {
+        } else if (file.toLowerCase().endsWith('.webp') || file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.jpeg') || file.toLowerCase().endsWith('.png')) {
           results.push(fullPath);
         }
       });
@@ -65,16 +71,15 @@ function main() {
       process.exit(1);
     }
 
-    // Move all images to public/frames/ with uniform naming if needed, or keeping original names if they match frame_xxx.jpg
+    // Move all images to public/frames/ with uniform naming if needed, or keeping original names if they match frame_xxx.webp
     // Let's sort them to ensure we process them in correct order
     images.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
     console.log('Copying and renaming images to public/frames/...');
     images.forEach((imgPath, index) => {
       const padNum = String(index + 1).padStart(3, '0');
-      const ext = path.extname(imgPath);
-      // We will normalize names to frame_001.jpg, frame_002.jpg, etc. as required
-      const newName = `frame_${padNum}.jpg`; // convert png/jpeg to .jpg names as expected by canvas hero
+      const ext = path.extname(imgPath).toLowerCase();
+      const newName = `frame_${padNum}.webp`; // normalize to .webp
       const targetPath = path.join(destPath, newName);
       fs.copyFileSync(imgPath, targetPath);
     });
